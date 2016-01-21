@@ -1,0 +1,97 @@
+<!DOCTYPE html> 
+<html> 
+    <head> 
+        
+    <title>Rest Polling</title> 
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1"> 
+    
+    <link rel="stylesheet" href="css/jquery/mobile/jquery.mobile-1.1.0.css">
+    
+    <link rel="stylesheet" href="css/websocket/chat.css">
+    
+    
+        <script type="text/javascript" src="js/phonegap/cordova-1.6.0.js"></script>
+    
+	<script type="text/javascript" src="js/jquery/jquery-1.7.1.js"></script>
+	<script type="text/javascript" src="js/jquery/mobile/jquery.mobile-1.1.0.js"></script>
+    
+    <script type="text/javascript" src="js/activemq/amq_jquery_adapter.js"></script>
+    <script type="text/javascript" src="js/activemq/amq.js"></script>
+    
+</head> 
+<body> 
+
+    
+<script type="text/javascript">
+    /**
+    * Init
+    */
+    $.mobile.defaultPageTransition       = 'none';
+    $.mobile.loadingMessageTextVisible   = 'true';
+    $.mobile.loadingMessage              = 'Carregando..';
+    
+    var myHandler =
+    {
+        rcvMessage: function( message ){
+            var objReceived = ($.parseJSON( message.textContent )).result;
+            
+        $("#received").append( "received in "+ ( (new Date()).getTime() - parseInt( objReceived.timestamp, 10 ) ) +"ms: "+ objReceived.message + "<br/>" );
+            
+        }
+    };
+    
+    $("#home-page").live(
+        'pageinit', 
+        function(){
+            
+            var amq = org.activemq.Amq;
+            amq.init({ 
+                //uri: 'http://192.168.98.118:8161/demo/amq', 
+                uri                         : 'http://14bis.i-brasil.com:8161/demo/amq', //Broker
+                logging                     : false,                                     //Debug log
+                timeout                     : 60,                                        //Connection timeout (s)
+                pollDelay                   : 500,                                       //Polling interval (ms)
+                clientId                    :(new Date()).getTime().toString(),          //Client unique identification
+                sessionInitializedCallback  : function(){                                //First 'GET' received
+                    //Bind events only when it is ready
+                    //Add listener
+                    amq.addListener( "hdlReceived", "topic://TOPIC.TEST", myHandler.rcvMessage);
+                    //Send message when clicked
+                    $("#btnSend").live(
+                        "tap",
+                        function(){
+                            amq.sendMessage( "topic://TOPIC.TEST", '{ "result":{"message":"Testing rest polling!","timestamp":"'+(new Date()).getTime().toString()+'"} }' );
+                        }
+                    );
+                }
+            });
+            
+        }
+    );
+</script>
+<div id="home-page" data-role="page">
+
+    <div  data-role="header">
+        <h1 id="header">My Title</h1>
+    </div><!-- /header -->
+
+    <div data-role="content">    
+        <div class="content-primary">    
+            
+            
+            <div id="received"></div>
+            
+            <a id="btnSend" data-role="button">Enviar !</a>
+            
+        </div>
+    </div><!-- /content -->
+    
+    <div data-role="footer">
+        <h1 id="footer" >My Footer</h1>
+    </div><!-- /header -->
+
+</div><!-- /page -->
+
+</body>
+</html>

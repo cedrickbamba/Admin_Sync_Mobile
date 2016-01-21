@@ -1,0 +1,104 @@
+<!DOCTYPE html> 
+<html> 
+    <head> 
+        
+    <title>My Page</title> 
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1"> 
+        
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+    
+</head> 
+<body> 
+
+    
+<script type="text/javascript">
+    /**
+    * Init
+    */
+    $(document).ready(function(){
+        
+        var db      = window.openDatabase(
+            "kaeptor",          //Name
+            "1.0",              //Version
+            "Kaeptor database", //Description
+            10*1024*1024        //Size in bytes
+        );            
+        
+        db.transaction(
+            function( tx ){
+                
+                tx.executeSql(
+                    "SELECT sql FROM sqlite_master",
+                    [],
+                    function( tx, result ){
+                        for( var i = 0; i < result.rows.length; i++ ){
+                            if( result.rows.item( i ).sql !== null ){
+                                //Write item sql if is not a webkit table
+                                if( result.rows.item( i ).sql.indexOf("__WebKitDatabaseInfoTable__") === -1 ){
+                                    document.write( "\n" + result.rows.item( i ).sql );
+                                }
+                            }
+                            
+                        }
+                        
+                        tx.executeSql(
+                            "SELECT tbl_name from sqlite_master WHERE type = 'table'",
+                            [],
+                            function( tx, result ){
+                                for( var i = 0; i < result.rows.length; i++ ){
+                                    
+                                    //Dump each table
+                                    var _tbl_name = result.rows.item( i ).tbl_name;
+                                    
+                                    //If it is not a webkit table
+                                    if( _tbl_name.indexOf("__WebKitDatabaseInfoTable__") === -1 ){
+                                        
+                                        tx.executeSql(
+                                            "SELECT * FROM " + _tbl_name + "", 
+                                            [], 
+                                            function( tx, result ){
+                                                //If retrieve something
+                                                if( result.rows.length > 0 ){
+                                                    for( var i = 0; i < result.rows.length; i++ ){
+
+                                                        var row = result.rows.item( i );
+                                                        var _fields = [];
+                                                        var _values = [];
+
+                                                        for( col in row ){
+                                                            _fields.push( col );
+                                                            _values.push( '"' + row[col] + '"' );
+                                                        }
+
+                                                        document.write("\nINSERT INTO " + _tbl_name + "(" + _fields.join(",") + ") VALUES (" + _values.join(",") + ")");
+
+                                                    }
+                                                }
+                                            }, 
+                                            function( tx, err ){
+                                                console.log(err);
+                                            }
+                                        );
+                                    }
+                                    
+                                }
+                            }
+                        );
+                        
+                    }
+                );
+
+            }, 
+            function( err ){
+                console.log(err);
+            }, 
+            function(){
+                console.log("Transaction OK");
+            }
+        );
+        
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns		= "http://www.w3.org/ns/widgets"
+	xmlns:gap	= "http://phonegap.com/ns/1.6"
+	id		= "com.kaeptor"
+	version 	= "1.0.0">
+
+	<name>Kaeptor</name>
+
+	<description>
+		A Kaeptor test.
+	</description>
+
+	<author href="http://lince.dc.ufscar.br">
+	    Lince
+	</author>
+
+	<icon src="images/icon.png" gap:role="default" />
+    <gap:splash src="images/splash.png"/>
+
+    <feature name="http://api.phonegap.com/1.6/battery"/>
+    <feature name="http://api.phonegap.com/1.6/camera"/>
+    <feature name="http://api.phonegap.com/1.6/contacts"/>
+    <feature name="http://api.phonegap.com/1.6/file"/>
+    <feature name="http://api.phonegap.com/1.6/geolocation"/>
+    <feature name="http://api.phonegap.com/1.6/media"/>
+    <feature name="http://api.phonegap.com/1.6/network"/>
+    <feature name="http://api.phonegap.com/1.6/notification"/>
+
+	<preference name="orientation" value="portrait" />
+</widget>

@@ -1,0 +1,206 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Send to ActiveMQ</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <script type="text/javascript" src="js/jquery/jquery-1.7.1.js"></script>
+        <script type="text/javascript" src="js/activemq/amq_jquery_adapter.js"></script>
+        <script type="text/javascript" src="js/activemq/amq.js"></script>
+        <script type="text/javascript" src="js/kaeptor/logger.js"></script>
+        <script type="text/javascript" src="js/kaeptor/jaux.js"></script>
+        <script type="text/javascript" src="js/kaeptor/core.js"></script>
+		
+		<link rel="stylesheet" href="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.css" />
+		<script src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+		<script src="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.js"></script>
+
+		<!--
+		<link rel="stylesheet"  href="http://code.jquery.com/mobile/1.0rc2/jquery.mobile-1.0rc2.min.css">
+		<script src="http://code.jquery.com/jquery-1.6.4.min.js"></script>
+		<script src="http://code.jquery.com/mobile/1.0rc2/jquery.mobile-1.0rc2.min.js"></script>
+		-->
+		
+        <script type="text/javascript">
+
+        	
+
+            function showCategory(urlObj, options){
+                //ActiveMQ object
+                var amq = org.activemq.Amq;
+				var i = 0;
+				var vetor=[];
+				var valor;
+                //Start ActiveMQ polling
+                amq.init({ 
+                    uri                         : 'http://lince.dc.ufscar.br/demo/amq',    //Broker
+                    logging                     : false,                                     //Debug log
+                    timeout                     : 60,                                        //Connection timeout (s)
+                    pollDelay                   : 1000,                                      //Polling interval (ms)
+                    clientId                    : (new Date).getTime(),                      //Client unique identification
+                    sessionInitializedCallback  : function(){                                //First 'GET' received
+                        //First polling message received
+                        kaeptor.auth.user.device = "adminVoltou";
+                        kaeptor.auth.login({ 
+                            username:   "admin",
+                            password:   "admin",
+                            success:    function(){
+                                    
+                                var channelList = kaeptor.channel.list({
+                                    token       : kaeptor.auth.user.tokenid,
+                                    max         : 100,
+                                    success     : function( channelList){
+                                    
+                                    	/*
+                                    	function showCategory( urlObj, options )
+										{
+										*/
+	
+										//var markup;
+
+										// Get the object that represents the category we
+										// are interested in. Note, that at this point we could
+										// instead fire off an ajax request to fetch the data, but
+										// for the purposes of this sample, it's already in memory.
+		
+
+                                    	pageSelector = urlObj.hash.replace( /\?.*$/, "" );
+										var $page = $( pageSelector );
+
+										// Get the header for the page.
+										$header = $page.children( ":jqmData(role=header)" );
+
+										// Get the content area element for the page.
+										$content = $page.children( ":jqmData(role=content)" );
+
+										// The markup we are going to inject into the content
+										// area of the page
+										 markup = "<ul data-role='listview' data-inset='true' data-theme='b'>"
+										
+                                        $.each( channelList, function( index, value ){
+                   														
+													i++;
+													markup += "<li ><a data-channelId='"+value.id+"' href='#buttonSendMessage'>" +value.name+ "</a></li>";
+													 valor = vetor[i] = value.id;
+													console.log("Value ID : " +vetor[i]);
+
+													
+                                        });
+										markup +="</ul>"
+										console.log( "Montagem de markup Bem sucedida... ");
+                       					
+										
+										// Find the h1 element in our header and inject the name of
+										// the category into it.
+										$header.find( "h1" ).html( "Lista de Todos Canais" );
+
+										// Inject the category items markup into the content element.
+										$content.html( markup);
+
+										// Pages are lazily enhanced. We call page() on the page
+										// element to make sure it is always enhanced before we
+										// attempt to enhance the listview markup we just injected.
+										// Subsequent calls to page() are ignored since a page/widget
+										// can only be enhanced once.
+										$page.page();
+
+										// Enhance the listview we just injected.
+										$content.find( ":jqmData(role=listview)" ).listview();
+
+										
+
+										// We don't want the data-url of the page we just modified
+										// to be the url that shows up in the browser's location field,
+										// so set the dataUrl option to the URL for the category
+										// we just loaded.
+										options.dataUrl = urlObj.href;
+
+										// Now call changePage() and tell it to switch to
+										// the page we just modified.
+										$.mobile.changePage( $page, options );
+
+										$("a").click(function () {
+                                       
+                                        		console.log("Value ID : " +  $(this).attr("data-channelId") );
+                       							 amq.sendMessage(
+                          						  "topic://"+ $(this).attr("data-channelId") ,                     //Destination
+                           							 '{"answer":{"channel":"'+ $(this).attr("data-channelId") +'"}}' //Message
+                       							 );
+
+                       							 console.log( "Função Enviar Bem sucedida... ");
+                       							 
+                    						}
+                    						
+
+                						);
+
+									}
+
+									});
+
+
+								 },
+
+                            	error:      function( error ){
+                                console.log( "Login Error: " + error );
+                            	}
+
+                     		});
+                    }
+                });
+}
+               	 
+
+			
+
+		                  
+
+
+		$(document).bind( "pagebeforechange", function( e, data ) {
+				// We only want to handle changePage() calls where the caller is
+				// asking us to load a page by URL.
+				if ( typeof data.toPage === "string" ) {
+				// We are being asked to load a page by URL, but we only
+				// want to handle URLs that request the data for a specific
+				// category.
+				var u = $.mobile.path.parseUrl( data.toPage ),
+				re = /^#category-item/;
+				if ( u.hash.search(re) !== -1 ) {
+				// We're being asked to display the items for a specific category.
+				// Call our internal method that builds the content for the category
+				// on the fly based on our in-memory category data structure.
+				showCategory( u, data.options );
+
+				// Make sure to tell changePage() we've handled this call so it doesn't
+				// have to do anything.
+				e.preventDefault();
+				}
+			}
+			});
+		
+        </script>
+    </head>
+    <body style="display: block;">
+	
+	<div id="home" data-role="page">
+		<div data-role="header"><h1></h1></div>
+		<div data-role="content" data-theme ="a">
+			<!--<h2>Escolhe o canal monitorado na seguinte lista:</h2>-->	
+			<ul data-role="listview" data-inset="true" data-theme="b">
+    			<li><a href="#category-items?category=lista" data-transition="flip" data-direction="reverse">Listar Todos Canais</a></li>
+    		</ul>
+
+		</div>
+
+	</div>
+	
+	
+	<div id="category-items" data-role="page">
+		<div data-role="header"><a href="#home" data-icon="back" data-transition="flip">Back</a>
+						<h1></h1>
+		</div>
+		<div data-role="content" data-theme="b"></div>
+	</div>
+		
+    </body>
+</html>

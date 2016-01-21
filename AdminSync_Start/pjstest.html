@@ -1,0 +1,355 @@
+<!DOCTYPE html> 
+<html> 
+    <head> 
+        
+    <title>My Page</title> 
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1"> 
+    
+    <script src="js/persistencejs/persistence.js" type="application/javascript"></script>
+    <script src="js/persistencejs/persistence.store.sql.js" type="application/javascript"></script>
+    <script src="js/persistencejs/persistence.store.websql.js" type="application/javascript"></script>
+        
+    <script type="text/javascript" src="js/jquery/jquery-1.7.1.js"></script>
+    
+    
+</head> 
+<body> 
+
+    
+<script type="text/javascript">
+    /**
+    * Init
+    */
+    persistence.store.websql.config(persistence, 'pjstest', 'A PersistenceJS test database', 5 * 1024 * 1024);
+   
+    //Schema Definition
+    //Table
+    var PJSChannel = persistence.define(
+        'Channel', 
+        {
+            channel_id  : "TEXT",
+            name        : "TEXT",
+            icon        : "TEXT",
+            topic       : "TEXT",
+            number      : "TEXT",
+            monitored   : "TEXT"
+        }
+    );
+    //Primary Key
+    PJSChannel.index( 
+        ['channel_id'], 
+        {
+            unique:true
+        } 
+    );
+    
+    //Table
+    var PJSGenre = persistence.define(
+        'Genre', 
+        {
+            genre_id    : "TEXT",
+            name        : "TEXT"
+        }
+    );
+    //Primary Key
+    PJSGenre.index( 
+        ['genre_id'], 
+        {
+            unique:true
+        } 
+    );
+    
+    //Table    
+    var PJSSubtitles = persistence.define(
+        'Subtitles', 
+        {
+            subtitles_id    : "TEXT",
+            pt              : "TEXT",
+            en              : "TEXT"
+        }
+    );
+    //Primary Key
+    PJSSubtitles.index( 
+        ['subtitles_id'], 
+        {
+            unique:true
+        } 
+    );
+        
+    //Table    
+    var PJSTitles = persistence.define(
+        'Titles', 
+        {
+            titles_id   : "TEXT",
+            pt          : "TEXT",
+            en          : "TEXT"
+        }
+    );
+    //Primary Key
+    PJSTitles.index( 
+        ['titles_id'], 
+        {
+            unique:true
+        } 
+    );
+    
+    //Table    
+    var PJSProgram = persistence.define(
+        'Program', 
+        {
+            program_id  : "TEXT"
+        }
+    );
+    //Primary Key
+    PJSProgram.index( 
+        ['program_id'], 
+        {
+            unique:true
+        } 
+    );
+    //1-1
+    PJSProgram.hasOne( 
+        'titles', 
+        PJSTitles
+    );
+    //M-N{
+    PJSGenre.hasMany(
+        'programs', 
+        PJSProgram, 
+        'genres'
+    );
+    PJSProgram.hasMany(
+        'genres', 
+        PJSGenre, 
+        'programs'
+    );
+    //}
+        
+    //Table    
+    var PJSSchedule = persistence.define(
+        'Schedule', 
+        {
+            schedule_id : "TEXT",
+            begin       : "DATE",
+            end         : "DATE",
+            synopsis    : "TEXT",
+            episode     : "TEXT"
+        }
+    );
+    //Primary Key
+    PJSSchedule.index( 
+        'schedule_id', 
+        {
+            unique:true
+        } 
+    );
+    //1-1
+    PJSSchedule.hasOne( 
+        'channel', 
+        PJSChannel
+    );
+    PJSSchedule.hasOne( 
+        'program', 
+        PJSProgram
+    );
+    PJSSchedule.hasOne( 
+        'subtitles', 
+        PJSSubtitles
+    );
+    
+    $(document).ready(function(){
+        persistence.schemaSync(
+            function( tx ){ 
+                var j, i;
+                var testPersisted   = 0;
+                var tsQueued        = 0;
+                var testLen         = 100;
+                var arrGenres       = [];
+                
+                var tsStarted = (new Date()).getTime();
+                $("body").append( "Started! (loading "+(testLen*65)+"): " + tsStarted + "<br/>" );
+                
+                //Pre define Genres
+                for ( i=0; i<5; i++) {
+                    var objGenre = new PJSGenre(
+                        {
+                            id          : "GEN"+i,
+                            genre_id    : "GEN"+i,
+                            name        : "Name"+i
+                        }
+                    );
+                    
+                    arrGenres.push( objGenre );
+                }
+                
+                //Pre gen channels
+                for ( j=0; j<testLen; j++) {
+                    
+                    //PJSChannel
+                    var objChannel = new PJSChannel(
+                        {
+                            id          : "CH"+j+"",
+                            channel_id  : "CH"+j+"",
+                            name        : "ChannelName"+j,
+                            icon        : "ChannelIcon"+j,
+                            topic       : "ChannelTopic"+j,
+                            number      : "ChannelNumber"+j,
+                            monitored   : "ChannelMonitored"+j
+                        }
+                    );
+                    
+                    persistence.add( objChannel );
+                }
+                
+                //Flush channels then
+                persistence.flush(
+                    function(){//Persisted
+                        
+                        //Start test
+                        for ( j=0; j<testLen; j++) {
+
+                            var objChannel = new PJSChannel(
+                                {
+                                    id          : "CH"+j+"",
+                                    channel_id  : "CH"+j+"",
+                                    name        : "ChannelName"+j,
+                                    icon        : "ChannelIcon"+j,
+                                    topic       : "ChannelTopic"+j,
+                                    number      : "ChannelNumber"+j,
+                                    monitored   : "ChannelMonitored"+j
+                                }
+                            );
+
+
+                            //Subtitles
+                            var objSubtitles = new PJSSubtitles(
+                                {
+                                    id             : "SUB"+j,
+                                    subtitles_id   : "SUB"+j,
+                                    pt             : "SubtitlesPT"+j,
+                                    en             : "SubtitlesEN"+j
+                                }
+                            );
+
+                            //Titles
+                            var objTitles = new PJSTitles(
+                                {
+                                    id         : "TTL"+j,
+                                    titles_id  : "TTL"+j,
+                                    pt         : "TitlesPT"+j,
+                                    en         : "TitlesEN"+j
+                                }
+                            );
+
+
+                            //Program
+                            var objProgram = new PJSProgram(
+                                {
+                                    id          : "PRO"+j,
+                                    program_id  : "PRO"+j,
+                                    titles      : objTitles
+                                }
+                            );
+                            
+                            //Add Genres
+                            for ( i=0; i<arrGenres.length; i++) {
+
+                                //Add a objProgram X objGenre relationship
+                                objProgram.genres.add( arrGenres[i] );
+
+                            }
+
+
+                            //Schedule
+                            for( var h=0; h<50; h++ ){
+                                
+                                //Dates
+                                var dtBegin = new Date();
+                                var dtEnd   = new Date();
+                                
+                                var objSchedule = new PJSSchedule(
+                                    {
+                                        id          : "SC"+j+"_"+h,
+                                        schedule_id : "SC"+j+"_"+h,
+                                        begin       : dtBegin.setHours( dtBegin.getHours() + h ),
+                                        end         : dtEnd.setHours( dtBegin.getHours() + h + 1 ),
+                                        synopsis    : "ScheduleSynopsis"+j+"_"+h,
+                                        episode     : "ScheduleEpisode"+j+"_"+h,
+                                        channel     : objChannel,
+                                        program     : objProgram,
+                                        subtitles   : objSubtitles
+                                    }
+                                );
+                                    
+                                //Add to persistence queue all objects related by this
+                                persistence.add( objSchedule );
+                            }
+
+
+                            tsQueued = (new Date()).getTime();
+                            if( j+1 === testLen ){
+                                $("body").append( "Objects Queued! ("+(testLen*65)+") : - " + tsQueued + " = " + (tsQueued - tsStarted) + "ms <br/>");
+                            }                    
+                        }
+                    }
+                );
+                
+                //Flush test
+                persistence.flush(
+                    function(){
+                        //Persisted
+                        //testPersisted++;
+                        var tsPersisted = (new Date()).getTime();
+
+                        //if( testPersisted === testLen ){
+                            $("body").append( "Objects Persisted! ("+(testLen*65)+") : - " + tsPersisted + " = " + (tsPersisted - tsQueued) + "ms <br/><hr />" );
+                        //}
+                        
+                        //Current time in miliseconds
+                        var now = new Date();
+                        PJSSchedule.all()
+                            .filter("begin", "<=", now)
+                            .and(new persistence.PropertyFilter("end", ">=", now))
+                            .prefetch("channel")    //Synchronos load Channel relationship
+                            .prefetch("subtitles")  //Synchronos load Subtitles relationship
+                            .prefetch("program")    //Synchronos load Program relationship
+                            .each( 
+                                function( obj ){
+                                    //Fetch Program.Titles
+                                    obj.program.fetch("titles", function(){
+                                        //Fetch Program.Genres
+                                        obj.program.genres.list(
+                                            function( arrResultGenre ){
+                                                
+                                                $("body").append( "<br/>Retrieved in " + ( (new Date()).getTime() - tsPersisted) + "ms <br/><br/>" );
+                                                
+                                                var strHTML = obj.schedule_id + "<br/>"
+                                                    + obj.channel.name + "<br/>"
+                                                    + obj.program.titles.pt + "<br/>"
+                                                    + obj.subtitles.pt + "<br/>"
+                                                    + obj.episode + "<br/>"
+                                                    + obj.synopsis + "<br/>"
+                                                ;
+                                                
+                                                for( var c=0; c<arrResultGenre.length; c++ ){
+                                                    strHTML += arrResultGenre[c].name + "<br/>";
+                                                }
+                                                
+                                                //Append on DOM
+                                                $("body").append( strHTML );
+                                            }
+                                        );
+                                    });                                    
+                                }
+                            );
+                        
+                    }
+                );
+            }
+        );
+        
+    });
+</script>
+</body>
+</html>

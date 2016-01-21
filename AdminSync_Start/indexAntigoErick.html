@@ -1,0 +1,398 @@
+<!DOCTYPE html> 
+<html> 
+	<head> 
+	<title>Kaeptor App</title> 
+	
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <link rel="stylesheet" href="css/jquery/mobile/jquery.mobile-1.1.1.css">
+    <link rel="stylesheet" href="css/jquery/mobile/jquery.mobile.iosstyle.css">
+
+
+    <script type="text/javascript" src="js/phonegap/cordova-2.0.0.js"></script>
+    
+    
+	<script type="text/javascript" src="js/jquery/jquery-1.7.1.js"></script>
+	<script type="text/javascript" src="js/jquery/mobile/jquery.mobile-1.1.1.js"></script>
+        
+        
+    <script type="text/javascript" src="js/activemq/amq_jquery_adapter.js"></script>
+    <script type="text/javascript" src="js/activemq/amq.js"></script>
+    
+    
+	<script type="text/javascript" src="js/persistencejs/persistence.js"></script>
+	<script type="text/javascript" src="js/persistencejs/persistence.store.sql.js"></script>
+	<script type="text/javascript" src="js/persistencejs/persistence.store.websql.js"></script>
+        
+    
+	<script type="text/javascript" src="js/KaeptorApplication.js"></script>
+	<script type="text/javascript">
+        //Global
+        //Vars
+        var deviceId, device;
+        var objUser;
+        var npsubscribe = false;
+        var currChannelItem;
+        var currChannel;
+        var currChannelDetail;
+        var currMoreDetail;
+        //debug::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        var amq               = org.activemq.Amq;
+        //AMQ Message Handler
+        var amqMsgHandler = {
+            rcvMessage: function( message ){
+                var objReceived = ($.parseJSON( message.textContent )).answer;
+                
+                var channelName = $("li[data-kaeptorchannel-id='"+objReceived.channel+"'].channel-listitem h3").html();
+
+                //Load preferences
+                var bBeep       = kaeptor.ls.getItem( kaeptor.config.USER_BEEP );
+                var bVibrate    = kaeptor.ls.getItem( kaeptor.config.USER_VIBRATE );
+                var iN10nTime   = kaeptor.ls.getItem( kaeptor.config.USER_N10NTIME );
+                var iN10nRepeat = kaeptor.ls.getItem( kaeptor.config.USER_N10NREPEAT );
+
+                //Beep check
+                if( bBeep == "true" ){
+
+                    if( iN10nRepeat === ""
+                        || iN10nRepeat === null ){
+                        //Default
+                        iN10nRepeat = 0;
+                    }
+                    navigator.notification.beep( iN10nRepeat + 1 );
+
+                }
+
+                //Vibrate check
+                if( bVibrate == "true" ){
+
+                    if( iN10nTime === ""
+                        || iN10nTime === null ){
+                        //Default
+                        iN10nTime = 0;
+                    }
+                    navigator.notification.vibrate( iN10nTime * 2000 + 1000 );
+
+                }
+
+                navigator.notification.alert( 
+                    "Voltou! A programação do canal '"+channelName+"' está no ar.",//( (objReceived.message === "back")?("Programa Voltou!!"):("Programa em intervalo comercial!!") ), 
+                    function(){}, 
+                    "Aviso de Programação", 
+                    "Ok!"
+                );
+
+
+            }
+        };
+        //Add listener to receive AMQ messages
+        var amqAddListener = function( topic ){
+                //If AMQ is ready to handle messages  
+                if( topic !== "" ){
+                    //Add AMQ listener
+                    amq.addListener( "hdlRcv_"+topic+"", "topic://"+topic+"", amqMsgHandler.rcvMessage);
+
+                    return 0;
+                } 
+
+                return 1;
+            };
+        //Remove listener to receive AMQ messages
+        var amqRemoveListener = function( topic ){
+            //If AMQ is ready to handle  
+            if( topic !== "" ){
+                //Remove AMQ listener
+                amq.removeListener( "hdlRcv_"+topic+"", "topic://"+topic+"" );
+
+                return 0;
+            } 
+
+            return 1;
+        };    
+
+        
+        //App
+        var app = new KaeptorApplication();
+        
+        // PhoneGap is loaded and it is now safe to make calls PhoneGap methods
+        function onDeviceReady(){
+            
+            //Init User
+            deviceId = device.uuid;
+            objUser = new KaeptorUser();
+             
+            //initiate application on device ready
+            app.start();
+            
+            //$.mobile.changePage("#authentication-page");
+            kaeptor.auth.login({ 
+                username:   "admin",
+                password:   "admin",
+                success:    function(){
+                    //if( checkRemainConected.is(':checked') ){
+                        kaeptor.ls.setItem( 
+                            kaeptor.config.USER_SECRET, 
+                            kaeptor.auth.user.secret 
+                        );
+                    /*} else {
+                        kaeptor.ls.save( 
+                            kaeptor.config.USER_SECRET, 
+                            ""
+                        );
+                    }*/
+
+                    kaeptor.ls.setItem( 
+                        kaeptor.config.USER_TOKEN, 
+                        kaeptor.auth.user.tokenid 
+                    );
+                    kaeptor.ls.setItem( 
+                        kaeptor.config.USER_EXPIRATION, 
+                        kaeptor.auth.user.expiration 
+                    );
+
+                    /*
+                    kaeptor.ls.setItem( kaeptor.config.USER_BEEP, "true" );
+                    kaeptor.ls.setItem( kaeptor.config.USER_VIBRATE, "true" );
+                    kaeptor.ls.setItem( kaeptor.config.USER_N10NTIME, "0" );
+                    kaeptor.ls.setItem( kaeptor.config.USER_N10NREPEAT, "0" );*/
+
+                    console.log("Token generated1: "+kaeptor.auth.user.tokenid);
+                    $.mobile.changePage("#mychannel-page");
+
+                },
+                error:      function( error ){
+                    console.log( "Login Error: " + error );
+                }
+            });
+            
+        }      
+        
+        $("#prerender-page").live(
+            'pageinit',
+            function(){            
+                console.log( navigator.platform.indexOf("arm") !== -1 );
+                if( navigator.platform.indexOf("arm") !== -1 ){
+                    //Wait device
+                    document.addEventListener("deviceready", onDeviceReady, false);
+                    
+                } else {
+                    //Is ready
+                    deviceId = "teste";
+                    //Fake device
+                    device = { 
+                        uuid        : deviceId,
+                        exitApp     : function(){
+                            $.mobile.changePage("#prerender-page");
+                            window.location.reload();
+                        }
+                    };
+                    //Fake navigator notification
+                    navigator.notification = {
+                        alert   : function( message, fn, title, button ){
+                            window.alert( message );
+                        },
+                        beep    : function( seconds ){
+                            window.alert( "Beep! ("+seconds+" seconds)" );
+                        },
+                        vibrate : function( mseconds ){
+                            window.alert( "Zzzzz! ("+mseconds+" ms)" );
+                        },
+                        confirm : function( message, fn, title, button ){
+                            var button = "";
+                            var response = window.confirm( message );
+
+                            if( response === true ){
+                                button = 1;
+                            } else {
+                                button = 0;
+                            }
+
+                            fn( button );
+                        }
+                    };
+                    //Callback
+                    onDeviceReady();
+                }
+            
+            }
+        );
+/*
+        if ( window.PhoneGap ) {  
+            //If app is running on a device
+            document.addEventListener("deviceready",onDeviceReady,false);
+            console.log("Running on a device!");
+        } else {
+
+            $(document).ready(function(){
+                //Call start function if not on device
+                onDeviceReady();
+
+            });
+
+        }*/
+                
+	</script>
+
+</head> 
+
+<body>
+    <div id="menubar">
+        <span id="settings"><span class="ui-icon ui-icon-gear ui-icon-shadow" style="display: block; margin-left: 10px;">&nbsp;</span>Settings</span>
+        <span><span class="ui-icon ui-icon-star ui-icon-shadow" style="display: block; margin-left: 10px;">&nbsp;</span>Account</span>
+        <span id="exit"><span class="ui-icon ui-icon-alert ui-icon-shadow" style="display: block; margin-left: 10px;">&nbsp;</span>Exit</span>
+    </div>
+    <!--<span class="status"></span>
+         Page prerender -->
+    <div data-role="page" id="prerender-page"></div>
+    
+    <!-- Page Authentication -->
+    <div data-role="page" id="authentication-page">
+
+        <script type="text/javascript">kaeptor.view.header();</script><!-- /header -->
+
+		<div data-role="content">	
+			<div data-role="fieldcontain">
+                <label for="username-text">Login: </label>
+                <input type="text" name="username-text" id="username-text" value="" />
+            </div>
+            <div data-role="fieldcontain">
+                <label for="password-text">Senha: </label>
+                <input type="password" name="password-text" id="password-text" value="" />
+			</div>
+                        <!--<textarea id="test-textarea"></textarea>-->
+			<p>
+                <input type="checkbox" name="remainconected-checkbox" id="remainconected-checkbox" />
+                <label for="remainconected-checkbox">Permanecer conectado.</label>
+            </p>
+            <p>
+                <a id="logon-button" href="" data-role="button" data-icon="check" data-iconpos="top">Entrar</a>
+            </p>
+			
+		</div><!-- /content -->
+
+		<!--/navbar --><!-- /footer -->
+		
+    </div><!-- /page -->
+    
+    <!-- Page MyChannel -->
+    <div data-role="page" id="mychannel-page">
+
+        <script type="text/javascript">kaeptor.view.header();</script><!-- /header -->
+
+        <div data-role="content">
+            <ul id="mychannel-listview" data-role="listview" data-inset="false">
+                <li data-role="list-divider" >Canais</li>
+            </ul><br/>
+            <a id="channellist-button" href="#channellist-page" data-role="button" data-icon="grid" data-iconpos="left">+ Canais</a>
+
+        </div><!-- /content -->
+
+        <script type="text/javascript">kaeptor.view.footer();</script><!-- /navbar --><!-- /footer -->
+
+    </div><!-- /page -->
+        <!-- Page ChannelList -->
+        <div data-role="page" id="channellist-page">
+
+            <script type="text/javascript">kaeptor.view.headerBack();</script><!-- /header -->
+
+            <div data-role="content">
+                <ul id="channel-listview" data-role="listview" data-filter="true" data-inset="false" data-filter-placeholder="Pesquisa.." style="margin-top: 25px;">
+
+                </ul>
+
+            </div><!-- /content -->
+
+            <script type="text/javascript">kaeptor.view.footer();</script><!-- /navbar --><!-- /footer -->
+
+        </div><!-- /page -->
+    
+    <!-- Page ChannelDetail -->
+    <div data-role="page" id="channeldetail-page">
+
+        <script type="text/javascript">kaeptor.view.headerBack();</script><!-- /header -->
+
+        <div data-role="content">
+            <ul id="channeldetail-listview" data-role="listview" data-inset="false">
+                <li data-role="list-divider" >Conteúdo Extra</li>
+                <li data-role="list-divider" >
+                    <img class="kaeptor-program-icon" src="" style="margin-top: 5px; float: left;"/>
+                    <h3 class="kaeptor-program-title" style="margin-left: 50px; float: left;">Carregando programação...</h3>
+                    <div style="display: block; width: 97%; height: 100px; margin-left: 5px; margin-top: 45px; font-size: 14px;">
+                        <div class="kaeptor-program-synopsis kaeptor-wraptext" style="width: 97%; height: 90px; font-style: italic; font-weight: normal; border: none;" >
+                                Carregando sinopse..
+                        </div>
+                    </div>
+                </li>
+            </ul>
+
+        </div><!-- /content -->
+
+        <script type="text/javascript">kaeptor.view.footer();</script><!-- /navbar --><!-- /footer -->
+
+    </div><!-- /page -->
+    
+    <div data-role="page" id="settings-page">
+
+		<script type="text/javascript">kaeptor.view.headerBack();</script><!-- /header -->
+
+		<div data-role="content">
+			<p><h3>Preferências:</h3></p>
+                            <div data-role="fieldcontain">
+                                <label for="n10Type-fieldset" >Tipo da notificação:</label>
+				<fieldset data-role="controlgroup" name="n10Type-fieldset">
+				   <input type="checkbox" name="beep-checkbox" id="beep-checkbox" />
+				   <label for="beep-checkbox">Beep</label>
+				   <input type="checkbox" name="vibrate-checkbox" id="vibrate-checkbox" />
+				   <label for="vibrate-checkbox">Vibrar</label>
+				</fieldset>
+                            </div>
+                        <p>
+                            <div data-role="fieldcontain">
+                                <label for="n10nTime-select" class="select">Tempo da notificação:</label>
+                                <select name="n10nTime-select" id="n10nTime-select" data-native-menu="false">
+                                        <option value="short">Curto</option>
+                                        <option value="long">Longo</option>
+                                </select>
+                            </div>
+                        </p>
+			<p>
+                            <div data-role="fieldcontain">
+                                <label for="n10nRepeat-select" class="select">Repetir beep notificação:</label>
+                                <select name="n10nRepeat-select" id="n10nRepeat-select" data-native-menu="false">
+                                    <option value="0">Nunca</option>
+                                    <option value="1">Uma vez</option>
+                                </select>
+                            </div>
+			</p>
+		</div><!-- /content -->
+
+		<script type="text/javascript">kaeptor.view.footer();</script><!-- /navbar --><!-- /footer -->
+		
+    </div><!-- /page -->
+    
+    <!-- Dialogs -->
+    <a id="lnkSubscribeDialog" href="#subscribe-dialog" data-role="button" data-rel="dialog" data-transition="slideup" data-corners="true" data-shadow="true" data-iconshadow="true"></a>
+    <!-- Subscribe dialog -->
+    <div data-role="page" id="subscribe-dialog"> 
+        <div data-role="content"> 
+            <span style="text-align: center; color: #e5e5e5;">
+                <h3>
+                    Deseja monitorar as transições da programação desse canal?
+                </h3>
+                <p>
+                    Você será avisado quando a programação voltar ou entrar no comercial.
+                </p>
+            </span>
+            <p style="margin: 30px auto; width: 90%; display: block;">
+                <label><input type="checkbox" id="cbxNPSubscribe" name="cbxNPSubscribe" /> Não perguntar novamente. </label>
+            </p>
+            <p style="margin: 0 auto; width: 90%; display: block;">
+                <button id="btnSubscribe" data-role="button" data-theme="a" onclick="history.back();">Sim, me avisar!</button>
+                <button data-role="button" data-theme="b" onclick="history.back();">Cancelar</button>
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>

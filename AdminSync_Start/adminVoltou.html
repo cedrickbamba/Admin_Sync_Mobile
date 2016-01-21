@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Send to ActiveMQ</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <script type="text/javascript" src="js/jquery/jquery-1.7.1.js"></script>
+        <script type="text/javascript" src="js/activemq/amq_jquery_adapter.js"></script>
+        <script type="text/javascript" src="js/activemq/amq.js"></script>
+        <script type="text/javascript" src="js/kaeptor/logger.js"></script>
+        <script type="text/javascript" src="js/kaeptor/jaux.js"></script>
+        <script type="text/javascript" src="js/kaeptor/core.js"></script>
+        <script type="text/javascript">
+            $(document).ready(function(){
+                //ActiveMQ object
+                var amq = org.activemq.Amq;
+                //Start ActiveMQ polling
+                amq.init({ 
+                    uri                         : 'http://kaeptor.i-brasil.com/demo/amq',    //Broker
+                    logging                     : false,                                     //Debug log
+                    timeout                     : 60,                                        //Connection timeout (s)
+                    pollDelay                   : 1000,                                      //Polling interval (ms)
+                    clientId                    : (new Date).getTime(),                      //Client unique identification
+                    sessionInitializedCallback  : function(){                                //First 'GET' received
+                        //First polling message received
+                        kaeptor.auth.user.device = "adminVoltou";
+                        kaeptor.auth.login({ 
+                            username:   "admin",
+                            password:   "admin",
+                            success:    function(){
+                                    
+                                var channelList = kaeptor.channel.list({
+                                    token       : kaeptor.auth.user.tokenid,
+                                    max         : 100,
+                                    success     : function( channelList ){
+                                    
+                                        $.each( channelList, function( index, value ){
+                                            $("#channel-select").append("\
+                                                    <option value='"+value.id+"'>"+value.name+"</option>\
+                                            ");
+                                        });
+
+                                        $("body").show();
+                                    }
+                                });
+
+                            },
+                            error:      function( error ){
+                                console.log( "Login Error: " + error );
+                            }
+                        });
+                    }
+                });
+                
+                $("#buttonSendMessage").live(
+                    "click",
+                    function(){
+                        amq.sendMessage(
+                            "topic://"+$("#channel-select option:selected").val(),                     //Destination
+                            '{"answer":{"channel":"'+$("#channel-select option:selected").val()+'"}}' //Message
+                        );
+                    }
+                );
+            });
+        </script>
+    </head>
+    <body style="display: block;">
+        <select id="channel-select">
+            <option>Escolha um canal:</option>
+        </select>
+        <button name="buttonSendMessage" id="buttonSendMessage">Enviar</button>
+    </body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html> 
+<html> 
+    <head> 
+        
+    <title>My Page</title> 
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1"> 
+    
+    <link rel="stylesheet" href="css/jquery/mobile/jquery.mobile-1.0.1.css">
+    
+    
+	<script type="text/javascript" src="js/jquery/jquery-1.7.1.js"></script>
+	<script type="text/javascript" src="js/jquery/mobile/jquery.mobile-1.0.1.js"></script>
+    
+    
+    <script type="text/javascript" src="js/waypoints/waypoints.js"></script>
+    
+</head> 
+<body> 
+
+    
+<script type="text/javascript">
+    /**
+    * Init
+    */
+    $.mobile.defaultPageTransition       = 'none';
+    $.mobile.loadingMessageTextVisible   = 'true';
+    $.mobile.loadingMessage              = 'Carregando..';
+    var i;
+    var footerReady = false;
+
+    $("#home-page").live(
+        'pageinit', 
+        function(){
+
+            console.log("Init");
+
+            var optsWHeader = {
+                offset      : '0' 
+            }
+
+            console.log("Header waypoint set");
+            $('#header').waypoint(
+                function( event, direction ){
+                    
+                    console.log("header:"+direction);
+                    
+                    if( direction === 'up' ){
+                                                 
+                        $(window).scrollTop( ($(window).scrollTop() + 75) );  //Set scroll initial position
+                        
+                        $.mobile.showPageLoadingMsg();
+
+                        var fnAppend = function(){
+                            
+                            $("#list > li:gt(9)").remove();            //Remove last 5 elements
+                            
+                            var offset = $("#list > li:first").data("listitem-id");
+                            
+                            for( var c=(offset-1); c>=(offset-5); c-- ){
+                                $("#list").prepend($("<li data-listitem-id=\"" + (c) + "\"><a href=\"index.html\"><img src=\"#\" /><h3>" + (c) + "</h3><p>z</p></a></li>"));
+                            }
+
+                            $("#list").listview('refresh');            //Refresh listview
+
+                            $('#header').waypoint( optsWHeader );      //Add waypoint again with current opts
+
+                            $.mobile.hidePageLoadingMsg();
+
+                            console.log("Waypoint header");
+                        }
+
+                        setTimeout(fnAppend, 200);
+                    }
+                }
+            );
+            
+            console.log("Append Init");
+
+            for(i=0; i<15; i++)
+            {
+                console.log("For appending");
+                $("#list").append($("<li data-listitem-id=\""+(i)+"\"><a href=\"index.html\"><img src=\"#\" /><h3>" + i + "</h3><p>z</p></a></li>"));
+            }
+
+            console.log("Listview Refresh");
+            $("#list").listview('refresh');
+
+            var optsWFooter = {
+                offset      : '100%' 
+            }
+
+            console.log("Footer waypoint set");
+            $('#footer').waypoint(
+                function( event, direction ) {
+                    console.log(event);
+                    console.log("footer:"+direction);
+                    
+                    if( direction === 'down' 
+                        && footerReady ){
+                            
+                        $(window).scrollTop( ($(window).scrollTop() - 75) );  //Set scroll initial position
+                        
+                        $.mobile.showPageLoadingMsg();
+
+                        var fnAppend = function(){
+                            
+                            $("#list > li:lt(5)").remove();
+                            
+                            var offset = $("#list > li:last").data("listitem-id");
+
+                            for( var c=(offset+1); c<=(offset+5); c++ ){
+                                $("#list").append($("<li data-listitem-id=\"" + (c) + "\"><a href=\"index.html\"><img src=\"#\" /><h3>" + (c) + "</h3><p>z</p></a></li>"));
+                            }
+
+                            $("#list").listview('refresh');            //Refresh listview
+
+                            $('#footer').waypoint( optsWFooter );      //Add waypoint again with current opts
+
+                            $.mobile.hidePageLoadingMsg();
+
+                            console.log("Waypoint footer");
+                        }
+
+                        setTimeout(fnAppend, 200);
+                    }
+                    footerReady = true; //First time triggered it is a bug
+                },
+                optsWFooter
+            );
+
+        }
+    );
+</script>
+<div id="home-page" data-role="page">
+
+    <div  data-role="header">
+        <h1 id="header">My Title</h1>
+    </div><!-- /header -->
+
+    <div data-role="content">    
+        <div class="content-primary">    
+            <ul data-role="listview" id="list">
+            </ul>
+        </div>
+    </div><!-- /content -->
+    
+    <div data-role="footer">
+        <h1 id="footer" >My Footer</h1>
+    </div><!-- /header -->
+
+</div><!-- /page -->
+
+</body>
+</html>

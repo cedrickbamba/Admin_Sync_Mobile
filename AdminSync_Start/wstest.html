@@ -1,0 +1,82 @@
+<!DOCTYPE html> 
+<html> 
+    <head> 
+        
+    <title>Websocket</title> 
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1"> 
+    
+    <link rel="stylesheet" href="css/jquery/mobile/jquery.mobile-1.0.1.css">
+    
+    <script type="text/javascript" src="js/phonegap/phonegap-1.4.1.js"></script>
+    
+	<script type="text/javascript" src="js/jquery/jquery-1.7.1.js"></script>
+	<script type="text/javascript" src="js/jquery/mobile/jquery.mobile-1.0.1.js"></script>
+    
+    
+    <script type="text/javascript" src="js/websocket/websocket.js"></script>
+    
+</head> 
+<body> 
+
+    
+<script type="text/javascript">
+    /**
+    * Init
+    */
+    $.mobile.defaultPageTransition       = 'none';
+    $.mobile.loadingMessageTextVisible   = 'true';
+    $.mobile.loadingMessage              = 'Carregando..';
+    
+    $("#home-page").live(
+        'pageinit', 
+        function(){
+
+            console.log("Init");
+            // new socket
+            var socket = new WebSocket('ws://192.168.98.118:61614');
+            console.log(socket);
+
+            // push a message after the connection is established.
+            socket.onopen = function() {
+                socket.send('Hello World');
+            };
+
+            // alerts message pushed from server
+            socket.onmessage = function(msg) {
+                console.log(JSON.stringify(msg));
+            };
+
+            // alert close event
+            socket.onclose = function() {
+                console.log('closed');
+            };
+
+            // now, close the connection after 10 secons. (funny!)
+        /* 	setInterval(function() {
+                socket.close();
+            }, 10000); */
+
+        }
+    );
+</script>
+<div id="home-page" data-role="page">
+
+    <div  data-role="header">
+        <h1 id="header">My Title</h1>
+    </div><!-- /header -->
+
+    <div data-role="content">    
+        <div class="content-primary">    
+            
+        </div>
+    </div><!-- /content -->
+    
+    <div data-role="footer">
+        <h1 id="footer" >My Footer</h1>
+    </div><!-- /header -->
+
+</div><!-- /page -->
+
+</body>
+</html>

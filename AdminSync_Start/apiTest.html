@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!--jQuery Library-->
+	<script type="text/javascript" src="js/jquery/jquery-1.7.1.js"></script>
+        <!--ActiveMQ-->        
+        <script type="text/javascript" src="js/activemq/amq_jquery_adapter.js"></script>
+        <script type="text/javascript" src="js/activemq/amq.js"></script>
+        <!--Aux Functions-->        
+        <script type="text/javascript" src="js/kaeptor/logger.js"></script>
+        <script type="text/javascript" src="js/kaeptor/jaux.js"></script>
+        <!--Kaeptor Core API-->        
+        <script type="text/javascript" src="js/kaeptor/core.js"></script>
+        
+        <!--jQuery onLoad-->
+        <script type="text/javascript">
+            $(document).ready(function(){
+                //ActiveMQ ready var
+                var boolAMQReady = false;
+                //ActiveMQ object
+                var amq = org.activemq.Amq;
+                
+                //Auto login
+                kaeptor.auth.user.device = "teste";
+                kaeptor.auth.login({
+                    username:   "admin",
+                    password:   "admin",
+                    success:    function(){
+                        window.alert("Logged!");
+                        //Start ActiveMQ polling
+                        amq.init({ 
+                            uri                         : 'http://kaeptor.i-brasil.com/demo/amq', //Broker
+                            logging                     : false,                                     //Debug log
+                            timeout                     : 60,                                        //Connection timeout (s)
+                            pollDelay                   : 500,                                       //Polling interval (ms)
+                            clientId                    : kaeptor.auth.user.tokenid,                 //Client unique identification
+                            sessionInitializedCallback  : function(){                                //First 'GET' received
+                                //Bind events only when it is ready
+                                boolAMQReady = true;
+                            }
+                        });
+                    },
+                    erro:       function(){
+                        window.alert("Not logged!");
+                    }
+                });
+                
+                //Bind click events
+                //bookmarked list
+                $("#buttonBookmarked").live(
+                    "click",
+                    function(){
+                        //Get bookmarked channels list
+                        kaeptor.channel.bookmarked({
+                            token       : kaeptor.auth.user.tokenid,
+                            success     : function( bookmarkedList ){
+                                $.each(
+                                    bookmarkedList,
+                                    function( index, objChannel ){
+                                        $("#bookmarkedResult").append("\
+                                            "+index+"<br/>\
+                                            "+objChannel.id+"<br/>\
+                                            "+objChannel.name+"<br/>\
+                                            <img src='"+kaeptor.config.STATIC_SERVER+"logos/"+objChannel.icon+"' /><br/>\
+                                            "+objChannel.topic+"<br/>\
+                                            "+objChannel.number+"<br/>\
+                                            "+objChannel.monitored+"<br/><br/>\
+                                        ");
+                                    }
+                                );
+                            },
+                            error       : function(){
+                                window.alert("Bookmarked list error!");
+                            }
+                        });
+                    }
+                );
+                    
+                //Subscribe a channel
+                $("#buttonSubscribe").live(
+                    "click",
+                    function(){
+                        //Kaeptor channel
+                        var objChannel = new KaeptorChannel();
+                        //Get channel id from text input
+                        objChannel.id = $("#textChannelID").val();
+                        //**test**: topic should be retrieved from a channel list function
+                        objChannel.topic = objChannel.id;
+                        
+                        //Subscribe the channel object created
+                        kaeptor.channel.subscribe({
+                            object          : objChannel,
+                            token           : kaeptor.auth.user.tokenid,
+                            amqAddListener  : function( topic ){
+                            //If AMQ is ready to handle messages  
+                                if( boolAMQReady
+                                    && topic !== "" ){
+                                    //Add ActiveMQ listener
+                                    amq.addListener( 
+                                        "hdlRcv_"+topic+"",     //handler id
+                                        "topic://"+topic+"",    //url
+                                        function( message ){    //callback
+                                            //Parse message
+                                            var objReceived = ($.parseJSON( message.textContent )).answer;
+                                            
+                                            if( objReceived.channel !== "" ){
+                                                window.alert("Program on channel "+objReceived.channel+" is back!");
+                                            } else {
+                                                window.alert("Program on channel "+objReceived.channel+" is on break!")
+                                            }
+                                        }
+                                    );
+                                }
+                                return 0;
+                            },
+                            success         : function(){
+                                window.alert("Channel subscribed.");
+                            },
+                            error           : function(){
+                                window.alert("Subscribe Error!");
+                            }
+                        });
+                    }
+                );
+                    
+                    
+                //Unsubscribe a channel
+                $("#buttonUnsubscribe").live(
+                    "click",
+                    function(){
+                        //Kaeptor channel
+                        var objChannel = new KaeptorChannel();
+                        //Get channel id from text input
+                        objChannel.id = $("#textChannelID").val();
+                        //**test**: topic should be retrieved from a channel list function
+                        objChannel.topic = objChannel.id;
+                        
+                        //Unsubscribe the channel object created
+                        kaeptor.channel.unsubscribe({
+                            object              : objChannel,
+                            token               : kaeptor.auth.user.tokenid,
+                            amqRemoveListener   : function( topic ){
+                                //If AMQ is ready to handle  
+                                if( boolAMQReady
+                                    && topic !== "" ){
+                                    //Remove AMQ listener
+                                    amq.removeListener( 
+                                        "hdlRcv_"+topic+"",     //handler id
+                                        "topic://"+topic+""     //topic
+                                    );
+
+                                    return 0;
+                                }
+                            },
+                            success             : function(){
+                                window.alert("Channel unsubscribed.");
+                            },
+                            error               : function(){
+                                window.alert("Unsubscribe Error!");
+                            }
+                        });
+                    }
+                );
+                    
+                //Subscribed list
+                $("#buttonSubscribed").live(
+                    "click",
+                    function(){
+                        //Get subscribed channels list
+                        kaeptor.channel.subscribed({
+                            token       : kaeptor.auth.user.tokenid,
+                            success     : function( subscribedList ){
+                                $.each(
+                                    subscribedList,
+                                    function( index, objChannel ){
+                                        $("#subscribedResult").append("\
+                                            "+index+"<br/>\
+                                            "+objChannel.id+"<br/>\
+                                            "+objChannel.name+"<br/>\
+                                            <img src='"+kaeptor.config.STATIC_SERVER+"logos/"+objChannel.icon+"'/><br/>\
+                                            "+objChannel.topic+"<br/>\
+                                            "+objChannel.number+"<br/>\
+                                            "+objChannel.monitored+"<br/><br/>\
+                                        ");
+                                    }
+                                );
+                            },
+                            error       : function(){
+                                window.alert("Subscribed list error!");
+                            }
+                        });
+                    }
+                );
+            });
+        </script>
+    </head>
+    <body>
+        <button id="buttonBookmarked">Bookmarked</button><br/>
+        <div id="bookmarkedResult"></div><br/>
+        
+        <input type="text" id="textChannelID" name="textChannelID" value="4f1476440cf21b20d62b0120"/>
+        <button id="buttonSubscribe">Subscribe</button>
+        <button id="buttonUnsubscribe">Unsubscribe</button><br/>
+        
+        <button id="buttonSubscribed">Subscribed</button><br/>
+        <div id="subscribedResult"></div><br/>
+    </body>
+</html>
